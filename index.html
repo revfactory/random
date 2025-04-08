@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>랜덤 추첨 게임</title>
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            overflow: hidden;
+            transition: background-color 0.5s;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: #f5f5f5;
+        }
+
+        .input-section {
+            margin-bottom: 2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        input {
+            padding: 12px;
+            font-size: 1.1rem;
+            width: 120px;
+            border: none;
+            border-radius: 8px;
+            background-color: #333;
+            color: white;
+            text-align: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 0 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .game-area {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            margin: 2rem 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            perspective: 1000px;
+        }
+
+        .participant {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: #e91e63;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            transition: all 0.5s ease-in-out;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            cursor: default;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        .finalist {
+            background-color: #4CAF50;
+            transform: scale(1.2) !important;
+            z-index: 10;
+            box-shadow: 0 0 20px 5px rgba(76, 175, 80, 0.7);
+        }
+
+        .eliminated {
+            opacity: 0.3 !important;
+            transform: scale(0.8) !important;
+        }
+
+        .winner {
+            background-color: #FFC107;
+            transform: scale(2) !important;
+            z-index: 100;
+            box-shadow: 0 0 30px 10px rgba(255, 193, 7, 0.7);
+            animation: winner-pulse 1.5s infinite;
+        }
+
+        @keyframes winner-pulse {
+            0% {
+                box-shadow: 0 0 30px 5px rgba(255, 193, 7, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 30px 15px rgba(255, 193, 7, 0.9);
+            }
+            100% {
+                box-shadow: 0 0 30px 5px rgba(255, 193, 7, 0.7);
+            }
+        }
+
+        .result-announcement {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            height: 3rem;
+            color: #FFC107;
+            text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .controls {
+            margin-top: 1rem;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #f0f;
+            opacity: 0;
+        }
+
+        .drum-sound {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .sound-toggle {
+            background: none;
+            border: 1px solid #555;
+            color: #aaa;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .sound-on {
+            color: #4CAF50;
+            border-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 랜덤 추첨 게임</h1>
+        
+        <div class="input-section">
+            <label for="participants">참가자 수를 입력하세요</label>
+            <input type="number" id="participants" min="2" max="100" value="10">
+            <button id="startBtn">시작하기</button>
+            <button id="resetBtn" disabled>다시하기</button>
+        </div>
+        
+        <div class="game-area" id="gameArea">
+            <!-- 참가자들이 여기에 동적으로 추가됩니다 -->
+        </div>
+        
+        <div class="result-announcement" id="resultAnnouncement"></div>
+        
+        <div class="drum-sound">
+            <span>효과음</span>
+            <button class="sound-toggle sound-on" id="soundToggle">켜기</button>
+        </div>
+    </div>
+
+    <script>
+        // 요소 참조
+        const participantsInput = document.getElementById('participants');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const gameArea = document.getElementById('gameArea');
+        const resultAnnouncement = document.getElementById('resultAnnouncement');
+        const soundToggle = document.getElementById('soundToggle');
+        
+        // 게임 상태 변수
+        let participants = [];
+        let isGameRunning = false;
+        let finalRound = false;
+        let soundEnabled = true;
+        let drumrollSound;
+        let successSound;
+        
+        // 오디오 초기화
+        function initAudio() {
+            // 드럼롤 사운드 생성
+            drumrollSound = new Audio();
+            drumrollSound.src = 'data:audio/wav;base64,UklGRigBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQBAADpAFgCvAM+BSQGrQdyCTMLrgxZDrsPXxT/FZcXOBm7EbsWRxzqHz4h8RXMCiAB8PkA83LtZucB4jXc+dyT3pjheuSD52/qh+x/7vLxZ/W195X64vw0//0AYwJHBIAGDAgZCrQL4wz+DRcPPhBREfwRaxKREqQSaxIVEugRWxH5EHEQgxAVEQwRexCxDv0Lwgi3BbECCwC2/Tr7s/gb9j30JPKz7zrt7Op36OfmcOW45J3kn+Tz5eLoVexX8Dv0tfcT+z7+0wFPBZQI/gupDuEQzBK0FBMWOxcxGAQZpRkEGhca3RmXGQ==';
+
+            // 성공 사운드 생성
+            successSound = new Audio();
+            successSound.src = 'data:audio/wav;base64,UklGRigCAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQCAACBAAAALAEAAFgCAABvAwAAgAQAAIsFAACVBgAAyAcAAMQIAAD/CQAADAsAAEAMAAB5DQAAngQAAKYFAACuBgAAwwcAALsIAAD0CQAABQsAADUMAABuDQAAeAwAAIANAACCDgAA8Q8AAPMQAABLEgAAZhMAALMUAAC4FQAACxcAABAYAABAGQAAQRoAAFwbAABhHAAAXh0AAH4eAABmHwAAkSAAAIQhAACfIgAAmCMAAK4kAACjJQAAuSYAAMUnAADCKAAAyykAAMMqAADIKwAAxiwAAMwtAADBLgAA0S8AAMIwAADCMQAAtzIAALgzAACnNAAAqDUAAJU2AACWNwAAiTgAAIo5AAB9OgAAfzsAAG48AABvPQAAYj4AAF8/AABTQAAAUEEAAENCAAAyQwAAJ0QAADhFAAAuRgAAG0cAAA5IAAACSQAANUoAACVLAAAXTAAAEE0AAAROAAAFTwAAB1AAAAxRAAABUgAACFMAAAtUAAAGVQAADFYAABBXAAAMWAAACVkAABxaAAAZWwAAJFwAAB9dAAAbXgAAFF8AACpgAAAtYQAAKGIAACNjAAAoZAAAKmUAAChmAAAjZwAAP2gAADxpAAA0agAAM2sAADBsAAAmSwAABkoAANtIAAB4RwAAwkUAAOVCAADIP0AAxzxVAKc5NwDMNkcAoDSAAAA=';
+        }
+
+        // 사운드 토글
+        soundToggle.addEventListener('click', function() {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundToggle.classList.add('sound-on');
+                soundToggle.textContent = '켜기';
+            } else {
+                soundToggle.classList.remove('sound-on');
+                soundToggle.textContent = '끄기';
+            }
+        });
+
+        // 게임 시작
+        startBtn.addEventListener('click', function() {
+            const count = parseInt(participantsInput.value);
+            if (count < 2 || count > 100) {
+                alert('2명에서 100명 사이로 입력해주세요');
+                return;
+            }
+            
+            initAudio();
+            startGame(count);
+        });
+
+        // 게임 리셋
+        resetBtn.addEventListener('click', function() {
+            resetGame();
+        });
+
+        // 게임 시작 함수
+        function startGame(count) {
+            if (isGameRunning) return;
+            
+            isGameRunning = true;
+            finalRound = false;
+            
+            // UI 업데이트
+            startBtn.disabled = true;
+            participantsInput.disabled = true;
+            resultAnnouncement.style.opacity = 0;
+            gameArea.innerHTML = '';
+            document.body.style.backgroundColor = '#121212';
+            
+            // 참가자 초기화
+            participants = [];
+            for (let i = 1; i <= count; i++) {
+                participants.push({
+                    id: i,
+                    element: null,
+                    eliminated: false
+                });
+            }
+            
+            // 참가자 요소 생성 및 배치
+            createParticipants();
+            
+            // 게임 진행
+            setTimeout(() => runGame(), 1000);
+        }
+
+        // 참가자 요소 생성
+        function createParticipants() {
+            const gameAreaRect = gameArea.getBoundingClientRect();
+            const width = gameAreaRect.width;
+            const height = gameAreaRect.height;
+            
+            participants.forEach((participant, index) => {
+                const element = document.createElement('div');
+                element.className = 'participant';
+                element.textContent = participant.id;
+                
+                const angle = (index / participants.length) * Math.PI * 2;
+                const radius = Math.min(width, height) * 0.4;
+                
+                const x = width / 2 + radius * Math.cos(angle) - 30;
+                const y = height / 2 + radius * Math.sin(angle) - 30;
+                
+                element.style.left = `${x}px`;
+                element.style.top = `${y}px`;
+                
+                gameArea.appendChild(element);
+                participant.element = element;
+                
+                // 애니메이션으로 등장
+                setTimeout(() => {
+                    element.style.opacity = 1;
+                    element.style.transform = 'scale(1)';
+                }, 50 + index * 50);
+            });
+        }
+
+        // 게임 진행
+        function runGame() {
+            // 남은 참가자 찾기
+            const remainingParticipants = participants.filter(p => !p.eliminated);
+            
+            // 게임 종료 조건
+            if (remainingParticipants.length === 1) {
+                announceWinner(remainingParticipants[0]);
+                return;
+            }
+            
+            // 마지막 라운드 체크 (2명 남았을 때)
+            if (remainingParticipants.length === 2 && !finalRound) {
+                finalRound = true;
+                
+                // 최종 결승전으로 전환
+                remainingParticipants.forEach(p => {
+                    p.element.classList.add('finalist');
+                });
+                
+                // 긴장감 조성
+                if (soundEnabled) {
+                    drumrollSound.play();
+                }
+                
+                document.body.style.backgroundColor = '#1a237e';
+                
+                // 3초 후 최종 결과
+                setTimeout(() => runGame(), 3000);
+                return;
+            }
+            
+            // 일정 수의 참가자 탈락
+            const eliminationCount = finalRound ? 1 : Math.ceil(remainingParticipants.length * 0.4);
+            const shuffled = [...remainingParticipants].sort(() => 0.5 - Math.random());
+            
+            // 탈락자 처리
+            for (let i = 0; i < eliminationCount && i < shuffled.length; i++) {
+                const toEliminate = shuffled[i];
+                toEliminate.eliminated = true;
+                toEliminate.element.classList.add('eliminated');
+            }
+            
+            // 다음 라운드
+            setTimeout(() => runGame(), finalRound ? 0 : 800);
+        }
+
+        // 승자 발표
+        function announceWinner(winner) {
+            if (soundEnabled) {
+                drumrollSound.pause();
+                successSound.play();
+            }
+            
+            winner.element.classList.add('winner');
+            document.body.style.backgroundColor = '#ff6f00';
+            
+            // 축하 메시지
+            resultAnnouncement.textContent = `🎉 ${winner.id}번이 당첨되었습니다! 🎉`;
+            resultAnnouncement.style.opacity = 1;
+            
+            // 색종이 효과
+            createConfetti();
+            
+            // 게임 재시작 가능
+            resetBtn.disabled = false;
+            isGameRunning = false;
+        }
+
+        // 색종이 효과
+        function createConfetti() {
+            const colors = ['#FFC107', '#4CAF50', '#2196F3', '#E91E63', '#9C27B0'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.top = '0';
+                confetti.style.opacity = '1';
+                confetti.style.width = `${Math.random() * 10 + 5}px`;
+                confetti.style.height = `${Math.random() * 10 + 5}px`;
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+                document.body.appendChild(confetti);
+                
+                // 색종이 애니메이션
+                const duration = Math.random() * 3 + 2;
+                confetti.style.animation = `confettiDrop ${duration}s linear forwards`;
+                
+                // 스타일 추가
+                const keyframe = document.createElement('style');
+                keyframe.innerHTML = `
+                    @keyframes confettiDrop {
+                        0% { 
+                            transform: translateY(0) rotate(${Math.random() * 360}deg); 
+                            opacity: 1;
+                        }
+                        100% { 
+                            transform: translateY(${window.innerHeight}px) rotate(${Math.random() * 720}deg); 
+                            opacity: 0;
+                        }
+                    }
+                `;
+                document.head.appendChild(keyframe);
+                
+                // 애니메이션 완료 후 제거
+                setTimeout(() => {
+                    document.body.removeChild(confetti);
+                    document.head.removeChild(keyframe);
+                }, duration * 1000);
+            }
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            gameArea.innerHTML = '';
+            resultAnnouncement.style.opacity = 0;
+            document.body.style.backgroundColor = '#121212';
+            
+            startBtn.disabled = false;
+            participantsInput.disabled = false;
+            resetBtn.disabled = true;
+            
+            // 남아있는 색종이 제거
+            document.querySelectorAll('.confetti').forEach(c => {
+                document.body.removeChild(c);
+            });
+        }
+    </script>
+</body>
+</html>
