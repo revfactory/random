@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 덕분에 오늘도 칼퇴 합니다 - 도서 증정 이벤트 추첨</title>
+    <style>
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden; /* 가로 스크롤 방지 */
+            transition: background-color 0.5s;
+        }
+
+        .container {
+            max-width: 900px; /* 너비 증가 */
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.2rem; /* 모바일 고려하여 약간 줄임 */
+            margin-bottom: 1rem;
+            color: #f5f5f5;
+        }
+
+        .event-description {
+            background-color: #222;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-align: left;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            color: #e0e0e0;
+        }
+
+        .event-description h2 {
+            font-size: 1.3rem;
+            color: #4CAF50;
+            margin-top: 0;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .event-description strong {
+            color: #FFC107;
+        }
+
+        .event-description code { /* 인용 스타일 */
+            background-color: #333;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .controls {
+            margin-bottom: 2rem;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 0 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .game-area {
+            position: relative;
+            width: 100%;
+            /* 높이를 동적으로 조절하도록 변경 */
+            min-height: 350px; /* 최소 높이 설정 */
+            margin: 2rem 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center; /* 요소들을 중앙 정렬 */
+            gap: 10px; /* 요소 간 간격 */
+            perspective: 1000px;
+            padding: 10px; /* 내부 여백 추가 */
+            box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
+        }
+
+        .participant {
+            /* position 제거하여 flexbox 레이아웃 사용 */
+            width: 45px; /* 크기 약간 줄임 */
+            height: 45px;
+            background-color: #e91e63;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem; /* 폰트 크기 조정 */
+            color: white;
+            transition: all 0.5s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: default;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        .winner {
+            background-color: #FFC107;
+            transform: scale(1.5) !important; /* 당첨자 강조 */
+            z-index: 100;
+            box-shadow: 0 0 20px 5px rgba(255, 193, 7, 0.7);
+            animation: winner-pulse 1.5s infinite;
+        }
+
+        @keyframes winner-pulse {
+            0% {
+                box-shadow: 0 0 20px 5px rgba(255, 193, 7, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 30px 10px rgba(255, 193, 7, 0.9);
+            }
+            100% {
+                box-shadow: 0 0 20px 5px rgba(255, 193, 7, 0.7);
+            }
+        }
+
+        .result-announcement {
+            font-size: 1.8rem; /* 크기 조정 */
+            font-weight: bold;
+            margin-top: 1rem;
+            min-height: 3rem; /* 최소 높이 유지 */
+            color: #FFC107;
+            text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(20px);
+        }
+
+        .result-announcement.show {
+             opacity: 1;
+             transform: translateY(0);
+        }
+
+        .confetti {
+            position: fixed; /* 화면 전체에 뿌려지도록 변경 */
+            width: 10px;
+            height: 10px;
+            background-color: #f0f;
+            opacity: 0;
+            top: 0; /* 시작 위치 상단 */
+            left: 0; /* 시작 위치 왼쪽 */
+            pointer-events: none; /* 클릭 방지 */
+            z-index: 9999; /* 다른 요소 위에 보이도록 */
+        }
+
+        .drum-sound {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #aaa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sound-toggle {
+            background: none;
+            border: 1px solid #555;
+            color: #aaa;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: color 0.3s, border-color 0.3s;
+        }
+
+        .sound-on {
+            color: #4CAF50;
+            border-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI 덕분에 오늘도 칼퇴 합니다</h1>
+        <h2>📚 도서 증정 이벤트 추첨 🎁 (5명)</h2>
+
+        <div class="event-description">
+            <h2>칼퇴하고 싶으신가요? - &lt;AI 덕분에 오늘도 칼퇴 합니다&gt; 5분께 책 나눔! 🎁</h2>
+            <p>AI를 활용해 '칼퇴'를 꿈꾸시는 분들께 기쁜 소식입니다! 😊 <code>@joy.0123</code> 님이 직접 집필하신 따끈따끈한 신간 <strong>"AI 덕분에 오늘도 칼퇴 합니다"</strong> 출간을 기념하여, 댓글로 참여해주신 100분 중 총 5분께 책을 선물로 드립니다.</p>
+            <hr style="border-color: #444; margin: 15px 0;">
+            <p><strong>✨ 참여 조건 ✨</strong></p>
+            <ul>
+                <li>사전 이벤트 게시글 댓글 참여자 대상 (선착순 100명)</li>
+                <li>댓글에 1부터 100 사이의 숫자를 하나 기재</li>
+                <li>(선택) <code>@joy.0123</code> 님을 위한 응원 메시지</li>
+                <li><strong>중요:</strong> 숫자가 중복될 경우, 먼저 댓글을 작성하신 분께 우선권 부여</li>
+            </ul>
+            <p><strong>📚 선정 방식 📚</strong><br>
+            아래 '추첨 시작!' 버튼을 누르면, 참여자 번호 1번부터 100번 중에서 무작위로 <strong>5개의 숫자</strong>를 추첨합니다. 해당 번호를 댓글로 작성해주신 5분께 책을 보내드립니다!</p>
+            <p style="text-align:center; margin-top:15px;"><code>@group</code> 모두 행운을 빌어요! 🍀</p>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn">추첨 시작!</button>
+            <button id="resetBtn" disabled>다시하기</button>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            </div>
+
+        <div class="result-announcement" id="resultAnnouncement"></div>
+
+        <div class="drum-sound">
+            <span>효과음</span>
+            <button class="sound-toggle sound-on" id="soundToggle">켜기</button>
+        </div>
+    </div>
+
+    <script>
+        // 요소 참조
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const gameArea = document.getElementById('gameArea');
+        const resultAnnouncement = document.getElementById('resultAnnouncement');
+        const soundToggle = document.getElementById('soundToggle');
+
+        // 게임 상태 변수
+        const PARTICIPANT_COUNT = 100; // 참가자 수 고정
+        const WINNER_COUNT = 5; // 당첨자 수
+        let participants = [];
+        let isGameRunning = false;
+        let soundEnabled = true;
+        let drumrollSound;
+        let successSound;
+        let revealTimeoutIds = []; // 당첨자 공개 타임아웃 ID 저장 배열
+
+        // 오디오 초기화 (페이지 로드 시 한번만)
+        function initAudio() {
+             try {
+                drumrollSound = new Audio('data:audio/wav;base64,UklGRigBAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQBAADpAFgCvAM+BSQGrQdyCTMLrgxZDrsPXxT/FZcXOBm7EbsWRxzqHz4h8RXMCiAB8PkA83LtZucB4jXc+dyT3pjheuSD52/qh+x/7vLxZ/W195X64vw0//0AYwJHBIAGDAgZCrQL4wz+DRcPPhBREfwRaxKREqQSaxIVEugRWxH5EHEQgxAVEQwRexCxDv0Lwgi3BbECCwC2/Tr7s/gb9j30JPKz7zrt7Op36OfmcOW45J3kn+Tz5eLoVexX8Dv0tfcT+z7+0wFPBZQI/gupDuEQzBK0FBMWOxcxGAQZpRkEGhca3RmXGQ==');
+                successSound = new Audio('data:audio/wav;base64,UklGRigCAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQCAACBAAAALAEAAFgCAABvAwAAgAQAAIsFAACVBgAAyAcAAMQIAAD/CQAADAsAAEAMAAB5DQAAngQAAKYFAACuBgAAwwcAALsIAAD0CQAABQsAADUMAABuDQAAeAwAAIANAACCDgAA8Q8AAPMQAABLEgAAZhMAALMUAAC4FQAACxcAABAYAABAGQAAQRoAAFwbAABhHAAAXh0AAH4eAABmHwAAkSAAAIQhAACfIgAAmCMAAK4kAACjJQAAuSYAAMUnAADCKAAAyykAAMMqAADIKwAAxiwAAMwtAADBLgAA0S8AAMIwAADCMQAAtzIAALgzAACnNAAAqDUAAJU2AACWNwAAiTgAAIo5AAB9OgAAfzsAAG48AABvPQAAYj4AAF8/AABTQAAAUEEAAENCAAAyQwAAJ0QAADhFAAAuRgAAG0cAAA5IAAACSQAANUoAACVLAAAXTAAAEE0AAAROAAAFTwAAB1AAAAxRAAABUgAACFMAAAtUAAAGVQAADFYAABBXAAAMWAAACVkAABxaAAAZWwAAJFwAAB9dAAAbXgAAFF8AACpgAAAtYQAAKGIAACNjAAAoZAAAKmUAAChmAAAjZwAAP2gAADxpAAA0agAAM2sAADBsAAAmSwAABkoAANtIAAB4RwAAwkUAAOVCAADIP0AAxzxVAKc5NwDMNkcAoDSAAAA=');
+                drumrollSound.preload = 'auto';
+                successSound.preload = 'auto';
+            } catch (e) {
+                console.error("오디오 초기화 실패:", e);
+                // 오디오 객체 생성 실패 시 비활성화
+                soundEnabled = false;
+                soundToggle.disabled = true;
+                soundToggle.textContent = '오류';
+             }
+        }
+
+        // 사운드 토글
+        soundToggle.addEventListener('click', function() {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundToggle.classList.add('sound-on');
+                soundToggle.textContent = '켜기';
+                 // 테스트 사운드 재생 (옵션)
+                // try { successSound.play().catch(e => {}); } catch (e) {}
+            } else {
+                soundToggle.classList.remove('sound-on');
+                soundToggle.textContent = '끄기';
+                // 재생 중인 사운드 중지
+                 try {
+                    if (drumrollSound && !drumrollSound.paused) drumrollSound.pause();
+                    if (successSound && !successSound.paused) successSound.pause();
+                } catch(e) {}
+            }
+        });
+
+        // 게임 시작
+        startBtn.addEventListener('click', function() {
+            if (isGameRunning) return;
+            startGame();
+        });
+
+        // 게임 리셋
+        resetBtn.addEventListener('click', function() {
+            resetGame();
+        });
+
+        // 게임 시작 함수
+        function startGame() {
+            isGameRunning = true;
+
+            // UI 업데이트
+            startBtn.disabled = true;
+            resetBtn.disabled = true; // 추첨 중에는 리셋 비활성화
+            resultAnnouncement.classList.remove('show');
+            resultAnnouncement.textContent = ''; // 이전 결과 초기화
+            gameArea.innerHTML = ''; // 이전 참가자 제거
+            document.body.style.backgroundColor = '#121212'; // 배경색 초기화
+
+            // 참가자 초기화
+            participants = [];
+            for (let i = 1; i <= PARTICIPANT_COUNT; i++) {
+                participants.push({
+                    id: i,
+                    element: null
+                });
+            }
+
+            // 참가자 요소 생성 및 배치
+            createParticipants();
+
+            // 추첨 프로세스 시작 (생성 애니메이션 후)
+            setTimeout(() => runSelectionProcess(), 1000 + PARTICIPANT_COUNT * 15); // 등장 시간 고려
+        }
+
+        // 참가자 요소 생성
+        function createParticipants() {
+            participants.forEach((participant, index) => {
+                const element = document.createElement('div');
+                element.className = 'participant';
+                element.textContent = participant.id;
+
+                gameArea.appendChild(element);
+                participant.element = element;
+
+                // 순차적으로 등장 애니메이션
+                setTimeout(() => {
+                    element.style.opacity = 1;
+                    element.style.transform = 'scale(1)';
+                }, 50 + index * 15); // 간격 줄여서 더 빨리 표시
+            });
+        }
+
+        // 추첨 프로세스 실행
+        async function runSelectionProcess() {
+            if (soundEnabled) {
+                try {
+                   drumrollSound.currentTime = 0; // 시작 시간 초기화
+                   drumrollSound.play().catch(e => console.error("드럼롤 재생 오류:", e));
+                } catch(e) {}
+            }
+
+            // 긴장감 고조 - 배경색 변경 및 메시지
+            document.body.style.backgroundColor = '#1a237e'; // 어두운 파랑
+            resultAnnouncement.textContent = '두구두구... 추첨 중입니다!';
+            resultAnnouncement.classList.add('show');
+
+             // 잠시 대기 (예: 3초)
+            await sleep(3000);
+
+             // 참가자 배열 복사 후 섞기 (Fisher-Yates Shuffle)
+            let shuffledParticipants = [...participants];
+            for (let i = shuffledParticipants.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffledParticipants[i], shuffledParticipants[j]] = [shuffledParticipants[j], shuffledParticipants[i]];
+            }
+
+            // 상위 N명 선정
+            const winners = shuffledParticipants.slice(0, WINNER_COUNT);
+
+            // 드럼롤 중지
+            if (soundEnabled) {
+                try { drumrollSound.pause(); } catch(e) {}
+            }
+
+            // 당첨자 발표 시작
+            await revealWinnersSequentially(winners);
+        }
+
+         // 당첨자 순차 발표
+        async function revealWinnersSequentially(winners) {
+            resultAnnouncement.textContent = `✨ ${WINNER_COUNT}명의 당첨자를 발표합니다! ✨`;
+            await sleep(1500); // 잠시 대기
+
+            let winnerIds = [];
+            for (let i = 0; i < winners.length; i++) {
+                const winner = winners[i];
+                winnerIds.push(winner.id);
+
+                // 해당 참가자 강조
+                winner.element.classList.add('winner');
+
+                // 개별 발표 메시지
+                resultAnnouncement.textContent = `${i + 1}번째 당첨자: ${winner.id}번!`;
+                document.body.style.backgroundColor = `hsl(${Math.random() * 360}, 50%, 30%)`; // 랜덤 배경색
+
+                if (soundEnabled) {
+                    try {
+                       successSound.currentTime = 0;
+                       successSound.play().catch(e => console.error("성공음 재생 오류:", e));
+                    } catch(e) {}
+                }
+
+                 // 개별 발표 간 딜레이
+                if (i < winners.length - 1) {
+                    await sleep(2000); // 다음 당첨자 발표 전 잠시 대기
+                }
+            }
+
+            // 최종 발표
+            announceWinners(winnerIds);
+        }
+
+        // 최종 당첨자 발표
+        function announceWinners(winnerIds) {
+            document.body.style.backgroundColor = '#ff6f00'; // 최종 주황색 배경
+
+            // 최종 축하 메시지
+            resultAnnouncement.textContent = `🎉 축하합니다! 당첨자: ${winnerIds.join(', ')} 🎉`;
+            resultAnnouncement.classList.add('show'); // 확실히 보이게
+
+            // 색종이 효과
+            createConfetti();
+
+            // 게임 종료 및 리셋 활성화
+            resetBtn.disabled = false;
+            isGameRunning = false;
+        }
+
+        // 색종이 효과 함수
+        function createConfetti() {
+            const colors = ['#FFC107', '#4CAF50', '#2196F3', '#E91E63', '#9C27B0', '#FFFFFF'];
+            const confettiCount = 150; // 색종이 개수 증가
+
+            for (let i = 0; i < confettiCount; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+                // 화면 상단에서 랜덤한 가로 위치에서 시작
+                confetti.style.left = `${Math.random() * 100}%`;
+                confetti.style.top = '-10px'; // 화면 바로 위에서 시작
+                confetti.style.opacity = '1';
+                const size = Math.random() * 8 + 4; // 크기 다양화 (4px ~ 12px)
+                confetti.style.width = `${size}px`;
+                confetti.style.height = `${size}px`;
+                confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+
+                document.body.appendChild(confetti);
+
+                const duration = Math.random() * 4 + 3; // 떨어지는 시간 (3초 ~ 7초)
+                const horizontalMovement = (Math.random() - 0.5) * window.innerWidth * 0.5; // 좌우 흔들림
+
+                // 애니메이션 적용
+                confetti.animate([
+                    { transform: `translate(0, -10px) rotate(${Math.random() * 360}deg)`, opacity: 1 },
+                    { transform: `translate(${horizontalMovement}px, ${window.innerHeight + 20}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }
+                ], {
+                    duration: duration * 1000,
+                    easing: 'linear',
+                    iterations: 1
+                });
+
+                // 애니메이션 완료 후 요소 제거
+                setTimeout(() => {
+                     if (confetti.parentNode === document.body) {
+                         document.body.removeChild(confetti);
+                    }
+                }, duration * 1000);
+            }
+        }
+
+
+        // 게임 리셋 함수
+        function resetGame() {
+             // 진행 중인 당첨자 공개 타임아웃 클리어
+            revealTimeoutIds.forEach(clearTimeout);
+            revealTimeoutIds = [];
+
+             // 사운드 중지
+            if (soundEnabled) {
+                 try {
+                    if (drumrollSound && !drumrollSound.paused) drumrollSound.pause();
+                    if (successSound && !successSound.paused) successSound.pause();
+                 } catch(e) {}
+            }
+
+            gameArea.innerHTML = '';
+            resultAnnouncement.textContent = '';
+            resultAnnouncement.classList.remove('show');
+            document.body.style.backgroundColor = '#121212';
+
+            startBtn.disabled = false;
+            resetBtn.disabled = true;
+            isGameRunning = false; // 게임 상태 초기화
+
+            // 남아있는 색종이 제거 (더 확실하게)
+             document.querySelectorAll('.confetti').forEach(c => c.remove());
+        }
+
+        // 유틸리티: sleep 함수
+        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+         // 페이지 로드 시 오디오 초기화
+        window.addEventListener('load', initAudio);
+
+    </script>
+</body>
+</html>
